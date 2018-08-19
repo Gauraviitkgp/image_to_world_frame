@@ -42,5 +42,5 @@ Any two of this is known and then world cordinates of every pixel of the image c
 And TADAAA! check your results. 
 
 ## Serious notes
-Flat earthies please stay away, earh is not in a single plane the code may not work for you
+Flat earthies please stay away, earh is not in a single plane, the code may not work for you
 
