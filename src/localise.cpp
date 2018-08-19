@@ -15,7 +15,6 @@ using namespace std;
 
 Mat hsv_img;
 int thresh = 100;
-int max_thresh = 255;
 RNG rng(12345);
 
 void mouseCB(int event, int x, int y, int flags, void* userdata)
@@ -48,7 +47,7 @@ int main(int argc, char** argv)
 	Mat grid_thr, no_grid, white_thr,grid_line;
 	int h=171,s=40,v=200,ht=102,st=48;
 	int r_w=255, g_w=255,b_w=255, rt_w=39, gt_w=26,bt_w=66;
-	int kernel_size=1;
+	int kernel_size=1,rho_thresh=50,theta_thres=3;
 
 	namedWindow("Sliders");
 	namedWindow("MainIM", CV_WINDOW_NORMAL);
@@ -68,10 +67,9 @@ int main(int argc, char** argv)
 	createTrackbar("gt_w","Sliders",&gt_w,255);
 	createTrackbar("bt_w","Sliders",&bt_w,255);
 
-	//createTrackbar("min_thresh","Sliders",&min_thresh,255);
-	//createTrackbar("max_thresh","Sliders",&max_thresh,255);
+	createTrackbar("rho_thresh","Sliders",&rho_thresh,200);
+	createTrackbar("theta_thres","Sliders",&theta_thres,200);
 	createTrackbar("kernel_size","Sliders",&kernel_size,2);
-
 	// createTrackbar("H_G","Sliders",&h_g,255);
 	// createTrackbar("S_G","Sliders",&s_g,255);
 	// //createTrackbar("V_G","Sliders",&v_g,255);
@@ -91,6 +89,8 @@ int main(int argc, char** argv)
 		namedWindow("grid_thr",CV_WINDOW_NORMAL);
 		namedWindow("white_thr",CV_WINDOW_NORMAL);
 		namedWindow("grid_line",CV_WINDOW_NORMAL);
+
+		namedWindow("detected lines",CV_WINDOW_NORMAL);
 	
 		cvtColor(img, hsv_img, CV_BGR2HSV_FULL);
 
@@ -104,12 +104,17 @@ int main(int argc, char** argv)
 			bitwise_not(grid_thr,no_grid);
 			bitwise_and(no_grid,white_thr,grid_line);
 
+			float theta_thresh=(float)theta_thres/10000+0.017;
+			cout<<theta_thresh<<" f "<<rho_thresh<<endl;
+
 			Mat dst,cdst;
 			Canny(grid_line,dst,0, 255,(kernel_size+1)*2+1);
 			cvtColor(dst, cdst, CV_GRAY2BGR);
-
+			vector<Vec2f> temp_lines;         //ADDITION 1 of temp_lines
 			#if 1
 				vector<Vec2f> lines;
+				int flag=0;
+				//vector<Vec2f> permanent_lines; //ADDITION 2 To store clubbed lines
 				HoughLines(dst, lines, 1, CV_PI/180, 100, 0, 0 );
 				float *x1=new float[lines.size()];
 				float *x2=new float[lines.size()];
@@ -118,15 +123,45 @@ int main(int argc, char** argv)
 					float rho = lines[i][0], theta = lines[i][1];
 					Point pt1, pt2;
 					double a = cos(theta), b = sin(theta);
+					flag=0;
 					double x0 = a*rho, y0 = b*rho;
 					pt1.x = cvRound(x0 + 1000*(-b));
 					pt1.y = cvRound(y0 + 1000*(a));
 					pt2.x = cvRound(x0 - 1000*(-b));
 					pt2.y = cvRound(y0 - 1000*(a));
+					// for(size_t j=0;j<i;j++)
+					// {
+							
+					// 	if(abs(lines[i][1]-lines[j][1])<theta_thresh && abs(lines[i][0]-lines[j][0]<rho_thresh))
+					// 	{
+					// 		flag=1;
+					// 		break;
+					// 	}	
+					// }
+					// //cout<<flag;
+					// if (flag==0)
+					// {
+
+					// 	line( cdst, pt1, pt2, Scalar(0,0,255), 3, CV_AA);
+					// 	cout<<"x1:"<<pt1.x<<"	x2:"<<pt2.x<<"	y1:"<<pt1.y<<"	y2:"<<pt2.y;
+					//   	cout<<"	rho:"<<rho<<"	theta:"<<lines[i][1]<<endl;
+					  	
+					// }
+
 					line( cdst, pt1, pt2, Scalar(0,0,255), 3, CV_AA);
-					cout<<"x1:"<<pt1.x<<"	x2:"<<pt2.x<<"	y1:"<<pt1.y<<"	y2:"<<pt2.y;
-					cout<<"	rho:"<<rho<<"	theta:"<<theta<<endl;
-			  	}
+					if(abs(lines[i][0]-lines[i-1][0])<10)
+					{
+						//temp_lines[i][0]=lines[i][0];
+						//temp_lines[i][1]=lines[i][1];
+						continue;
+					}
+					else
+					{
+					    cout<<"x1:"<<pt1.x<<"	x2:"<<pt2.x<<"	y1:"<<pt1.y<<"	y2:"<<pt2.y;
+					    cout<<"	rho:"<<rho<<"	theta:"<<theta<<endl;
+					    //temp_lines.clear();	
+					}
+				}
 			  	cout<<endl;
 			#else
 			vector<Vec4i> lines;
@@ -140,7 +175,6 @@ int main(int argc, char** argv)
 			//grid_line=eroded(grid_line,1);
 			//dilate(grid_area,grid_area,element);
 
-			cout<<lines.rho[2];
 			imshow("grid_thr",grid_thr);
 			//imshow("no_grid",no_grid);
 			imshow("white_thr",white_thr);
